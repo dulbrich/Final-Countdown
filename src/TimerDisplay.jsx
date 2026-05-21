@@ -36,13 +36,13 @@ function getStatus(timerState, remainingSeconds, overtimeSeconds) {
   return 'Speaker Time Remaining';
 }
 
-export default function TimerDisplay({ remainingSeconds, overtimeSeconds, timerState }) {
+export default function TimerDisplay({ remainingSeconds, overtimeSeconds, timerState, isFullscreen = false }) {
   const expired = timerState === TIMER_STATES.EXPIRED;
   const status = getStatus(timerState, remainingSeconds, overtimeSeconds);
   const primaryTime = expired ? formatOvertime(overtimeSeconds) : formatClock(remainingSeconds);
 
   return (
-    <section className={`display ${expired ? 'display--expired' : ''}`}>
+    <section className={`display ${expired ? 'display--expired' : ''} ${isFullscreen ? 'display--fullscreen' : ''}`}>
       <p className="display__eyebrow">{status}</p>
       <div className="display__time" aria-live="polite">{primaryTime}</div>
       <div className="display__subline">

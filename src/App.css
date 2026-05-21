@@ -58,6 +58,14 @@ input {
   min-height: 100vh;
 }
 
+.app--fullscreen {
+  cursor: none;
+}
+
+.app--fullscreen .layout {
+  grid-template-columns: 1fr;
+}
+
 .controls {
   padding: 1.5rem;
   background: rgba(3, 7, 18, 0.82);
@@ -169,6 +177,11 @@ input {
   gap: 1rem;
 }
 
+.display--fullscreen {
+  min-height: 100vh;
+  padding: 3rem;
+}
+
 .display__eyebrow {
   margin: 0;
   text-transform: uppercase;
@@ -188,6 +201,26 @@ input {
 .display__subline {
   color: #94a3b8;
   font-size: clamp(1rem, 2vw, 1.6rem);
+}
+
+.fullscreen-exit {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 20;
+  width: 3rem;
+  height: 3rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fullscreen-exit:hover {
+  background: rgba(30, 41, 59, 0.94);
 }
 
 .display--expired .display__time,

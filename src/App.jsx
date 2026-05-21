@@ -47,7 +47,9 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [minutesInput, setMinutesInput] = useState('3');
   const [secondsInput, setSecondsInput] = useState('00');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const appRef = useRef(null);
   const deadlineRef = useRef(null);
   const intervalRef = useRef(null);
   const warnedTenRef = useRef(false);
@@ -160,6 +162,30 @@ export default function App() {
     applyPreset(total);
   }, [applyPreset, minutesInput, secondsInput]);
 
+  const requestFullscreen = useCallback(async () => {
+    const element = appRef.current;
+    if (!element || document.fullscreenElement === element) return;
+
+    try {
+      await element.requestFullscreen();
+    } catch {
+      // Ignore fullscreen failures and keep the timer usable.
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(async () => {
+    if (!document.fullscreenElement) {
+      setIsFullscreen(false);
+      return;
+    }
+
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Ignore exit failures and just update local UI state on next event.
+    }
+  }, []);
+
   const startTimer = useCallback(() => {
     resetMilestones();
     setRemainingSeconds(allottedTimeSeconds);
@@ -167,7 +193,8 @@ export default function App() {
     deadlineRef.current = Date.now() + allottedTimeSeconds * 1000;
     setTimerState(TIMER_STATES.RUNNING);
     startInterval();
-  }, [allottedTimeSeconds, resetMilestones, startInterval]);
+    requestFullscreen();
+  }, [allottedTimeSeconds, requestFullscreen, resetMilestones, startInterval]);
 
   const pauseTimer = useCallback(() => {
     if (timerState !== TIMER_STATES.RUNNING) return;
@@ -203,6 +230,15 @@ export default function App() {
   useEffect(() => () => clearTicker(), [clearTicker]);
 
   useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (event) => {
       const tagName = event.target?.tagName?.toLowerCase();
       const isTyping = tagName === 'input';
@@ -222,6 +258,10 @@ export default function App() {
       if (!isTyping && event.key.toLowerCase() === 's') {
         event.preventDefault();
         stopTimer();
+      }
+
+      if (event.key === 'Escape' && document.fullscreenElement) {
+        setIsFullscreen(false);
       }
     };
 
@@ -244,30 +284,39 @@ export default function App() {
   }, [overtimeSeconds, remainingSeconds, timerState]);
 
   return (
-    <div className={`app app--${displayMode}`}>
+    <div ref={appRef} className={`app app--${displayMode} ${isFullscreen ? 'app--fullscreen' : ''}`}>
+      {isFullscreen && (
+        <button className="fullscreen-exit" onClick={exitFullscreen} aria-label="Exit fullscreen timer view">
+          ×
+        </button>
+      )}
+
       <div className="layout">
-        <TimerControls
-          minutesInput={minutesInput}
-          secondsInput={secondsInput}
-          onMinutesChange={setMinutesInput}
-          onSecondsChange={setSecondsInput}
-          onApplyCustomTime={applyCustomTime}
-          presets={PRESETS}
-          onApplyPreset={applyPreset}
-          onStart={startTimer}
-          onPause={pauseTimer}
-          onResume={resumeTimer}
-          onReset={resetTimer}
-          onStop={stopTimer}
-          timerState={timerState}
-          soundEnabled={soundEnabled}
-          onToggleSound={() => setSoundEnabled((value) => !value)}
-        />
+        {!isFullscreen && (
+          <TimerControls
+            minutesInput={minutesInput}
+            secondsInput={secondsInput}
+            onMinutesChange={setMinutesInput}
+            onSecondsChange={setSecondsInput}
+            onApplyCustomTime={applyCustomTime}
+            presets={PRESETS}
+            onApplyPreset={applyPreset}
+            onStart={startTimer}
+            onPause={pauseTimer}
+            onResume={resumeTimer}
+            onReset={resetTimer}
+            onStop={stopTimer}
+            timerState={timerState}
+            soundEnabled={soundEnabled}
+            onToggleSound={() => setSoundEnabled((value) => !value)}
+          />
+        )}
 
         <TimerDisplay
           remainingSeconds={remainingSeconds}
           overtimeSeconds={overtimeSeconds}
           timerState={timerState}
+          isFullscreen={isFullscreen}
         />
       </div>
     </div>
