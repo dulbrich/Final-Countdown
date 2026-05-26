@@ -206,6 +206,39 @@ export default function App() {
     setTimerState(TIMER_STATES.PAUSED);
   }, [clearTicker, remainingSeconds, timerState]);
 
+  const addFiveSeconds = useCallback(() => {
+    const increment = 5;
+
+    setAllottedTimeSeconds((current) => current + increment);
+    syncInputs(allottedTimeSeconds + increment);
+
+    if (timerState === TIMER_STATES.RUNNING && deadlineRef.current) {
+      deadlineRef.current += increment * 1000;
+      tick();
+      return;
+    }
+
+    if (timerState === TIMER_STATES.PAUSED || timerState === TIMER_STATES.IDLE) {
+      setRemainingSeconds((current) => current + increment);
+      return;
+    }
+
+    if (timerState === TIMER_STATES.EXPIRED) {
+      if (overtimeSeconds >= increment) {
+        setOvertimeSeconds((current) => current - increment);
+        return;
+      }
+
+      const rollover = increment - overtimeSeconds;
+      setOvertimeSeconds(0);
+      setRemainingSeconds(rollover);
+      setTimerState(TIMER_STATES.PAUSED);
+      expiredRef.current = false;
+      overtimeThirtyRef.current = false;
+      warnedTenRef.current = rollover <= TEN_SECONDS;
+    }
+  }, [allottedTimeSeconds, overtimeSeconds, syncInputs, tick, timerState]);
+
   const resumeTimer = useCallback(() => {
     if (timerState !== TIMER_STATES.PAUSED) return;
 
@@ -306,6 +339,7 @@ export default function App() {
             onResume={resumeTimer}
             onReset={resetTimer}
             onStop={stopTimer}
+            onAddFiveSeconds={addFiveSeconds}
             timerState={timerState}
             soundEnabled={soundEnabled}
             onToggleSound={() => setSoundEnabled((value) => !value)}

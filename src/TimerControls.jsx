@@ -23,6 +23,7 @@ export default function TimerControls({
   onResume,
   onReset,
   onStop,
+  onAddFiveSeconds,
   timerState,
   soundEnabled,
   onToggleSound,
@@ -92,6 +93,9 @@ export default function TimerControls({
           </button>
           <button className="button button--secondary" onClick={onReset}>
             Reset
+          </button>
+          <button className="button button--secondary" onClick={onAddFiveSeconds}>
+            +5 sec
           </button>
           <button className="button button--danger" onClick={onStop}>
             Stop
