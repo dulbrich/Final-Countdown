@@ -293,6 +293,16 @@ export default function App() {
         stopTimer();
       }
 
+      if (!isTyping && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        requestFullscreen();
+      }
+
+      if (!isTyping && (event.key === '+' || event.key === '=')) {
+        event.preventDefault();
+        addFiveSeconds();
+      }
+
       if (event.key === 'Escape' && document.fullscreenElement) {
         setIsFullscreen(false);
       }
@@ -300,7 +310,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pauseTimer, resetTimer, resumeTimer, startTimer, stopTimer, timerState]);
+  }, [addFiveSeconds, pauseTimer, requestFullscreen, resetTimer, resumeTimer, startTimer, stopTimer, timerState]);
 
   const displayMode = useMemo(() => {
     if (timerState === TIMER_STATES.EXPIRED) {
@@ -340,6 +350,7 @@ export default function App() {
             onReset={resetTimer}
             onStop={stopTimer}
             onAddFiveSeconds={addFiveSeconds}
+            onEnterFullscreen={requestFullscreen}
             timerState={timerState}
             soundEnabled={soundEnabled}
             onToggleSound={() => setSoundEnabled((value) => !value)}

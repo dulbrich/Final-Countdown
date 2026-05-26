@@ -151,6 +151,10 @@ input {
   background: #b91c1c;
 }
 
+.button--fullscreen-toggle {
+  width: 100%;
+}
+
 .toggle-row {
   flex-direction: row;
   align-items: center;
