@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TimerDisplay from './TimerDisplay';
 import TimerControls from './TimerControls';
+import SettingsPage from './SettingsPage';
+import { playNamedSound } from './sounds';
 
 const TIMER_STATES = {
   IDLE: 'idle',
@@ -10,35 +12,8 @@ const TIMER_STATES = {
 };
 
 const PRESETS = [60, 120, 180, 300, 600];
-const TEN_SECONDS = 10;
 const THIRTY_SECONDS = 30;
 const SIXTY_SECONDS = 60;
-
-function buildChime(frequency = 880, duration = 0.18, volume = 0.03, type = 'sine') {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) return null;
-
-  const context = new AudioContextClass();
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-
-  oscillator.type = type;
-  oscillator.frequency.value = frequency;
-  gain.gain.setValueAtTime(volume, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(Math.max(volume * 0.001, 0.0001), context.currentTime + duration);
-
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-
-  oscillator.start();
-  oscillator.stop(context.currentTime + duration);
-
-  oscillator.onended = () => {
-    context.close().catch(() => {});
-  };
-
-  return context;
-}
 
 export default function App() {
   const [allottedTimeSeconds, setAllottedTimeSeconds] = useState(180);
@@ -49,13 +24,23 @@ export default function App() {
   const [minutesInput, setMinutesInput] = useState('3');
   const [secondsInput, setSecondsInput] = useState('00');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [cueSettings, setCueSettings] = useState({
+    warningSeconds: 10,
+    overtimeCueSeconds: 30,
+  });
+  const [selectedSounds, setSelectedSounds] = useState({
+    warning: 'ding-clear',
+    expired: 'bell-door',
+    overtime: 'alert-formal',
+  });
 
   const appRef = useRef(null);
   const deadlineRef = useRef(null);
   const intervalRef = useRef(null);
-  const warnedTenRef = useRef(false);
+  const warningPlayedRef = useRef(false);
   const expiredRef = useRef(false);
-  const overtimeThirtyRef = useRef(false);
+  const overtimeCuePlayedRef = useRef(false);
 
   const syncInputs = useCallback((totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60);
@@ -64,21 +49,13 @@ export default function App() {
     setSecondsInput(String(seconds).padStart(2, '0'));
   }, []);
 
-  const playChime = useCallback(
-    (type) => {
+  const playCue = useCallback(
+    (cueType) => {
       if (!soundEnabled) return;
-
-      if (type === 'ten') buildChime(880, 0.14, 0.03);
-      if (type === 'expired') {
-        buildChime(1046, 0.95, 0.1, 'triangle');
-        setTimeout(() => buildChime(1318, 1.05, 0.08, 'sine'), 90);
-      }
-      if (type === 'overtime30') {
-        buildChime(660, 0.14, 0.035);
-        setTimeout(() => buildChime(880, 0.14, 0.03), 180);
-      }
+      const soundId = selectedSounds[cueType];
+      if (soundId) playNamedSound(soundId);
     },
-    [soundEnabled]
+    [selectedSounds, soundEnabled]
   );
 
   const clearTicker = useCallback(() => {
@@ -89,9 +66,9 @@ export default function App() {
   }, []);
 
   const resetMilestones = useCallback(() => {
-    warnedTenRef.current = false;
+    warningPlayedRef.current = false;
     expiredRef.current = false;
-    overtimeThirtyRef.current = false;
+    overtimeCuePlayedRef.current = false;
   }, []);
 
   const stopTimer = useCallback(() => {
@@ -115,9 +92,9 @@ export default function App() {
       setRemainingSeconds(safeRemaining);
       setOvertimeSeconds(0);
 
-      if (safeRemaining <= TEN_SECONDS && !warnedTenRef.current) {
-        warnedTenRef.current = true;
-        playChime('ten');
+      if (safeRemaining <= cueSettings.warningSeconds && !warningPlayedRef.current) {
+        warningPlayedRef.current = true;
+        playCue('warning');
       }
       return;
     }
@@ -129,14 +106,14 @@ export default function App() {
 
     if (!expiredRef.current) {
       expiredRef.current = true;
-      playChime('expired');
+      playCue('expired');
     }
 
-    if (overtime >= THIRTY_SECONDS && !overtimeThirtyRef.current) {
-      overtimeThirtyRef.current = true;
-      playChime('overtime30');
+    if (overtime >= cueSettings.overtimeCueSeconds && !overtimeCuePlayedRef.current) {
+      overtimeCuePlayedRef.current = true;
+      playCue('overtime');
     }
-  }, [playChime]);
+  }, [cueSettings.overtimeCueSeconds, cueSettings.warningSeconds, playCue]);
 
   const startInterval = useCallback(() => {
     clearTicker();
@@ -212,9 +189,10 @@ export default function App() {
 
   const addFiveSeconds = useCallback(() => {
     const increment = 5;
+    const nextAllotted = allottedTimeSeconds + increment;
 
-    setAllottedTimeSeconds((current) => current + increment);
-    syncInputs(allottedTimeSeconds + increment);
+    setAllottedTimeSeconds(nextAllotted);
+    syncInputs(nextAllotted);
 
     if (timerState === TIMER_STATES.RUNNING && deadlineRef.current) {
       deadlineRef.current += increment * 1000;
@@ -238,10 +216,10 @@ export default function App() {
       setRemainingSeconds(rollover);
       setTimerState(TIMER_STATES.PAUSED);
       expiredRef.current = false;
-      overtimeThirtyRef.current = false;
-      warnedTenRef.current = rollover <= TEN_SECONDS;
+      overtimeCuePlayedRef.current = false;
+      warningPlayedRef.current = rollover <= cueSettings.warningSeconds;
     }
-  }, [allottedTimeSeconds, overtimeSeconds, syncInputs, tick, timerState]);
+  }, [allottedTimeSeconds, cueSettings.warningSeconds, overtimeSeconds, syncInputs, tick, timerState]);
 
   const resumeTimer = useCallback(() => {
     if (timerState !== TIMER_STATES.PAUSED) return;
@@ -259,6 +237,15 @@ export default function App() {
     setOvertimeSeconds(0);
     setTimerState(TIMER_STATES.IDLE);
   }, [allottedTimeSeconds, clearTicker, resetMilestones]);
+
+  const updateCueSetting = useCallback((key, value) => {
+    const parsed = Math.max(1, Number.parseInt(value, 10) || 1);
+    setCueSettings((current) => ({ ...current, [key]: parsed }));
+  }, []);
+
+  const updateSoundSelection = useCallback((key, value) => {
+    setSelectedSounds((current) => ({ ...current, [key]: value }));
+  }, []);
 
   useEffect(() => {
     syncInputs(allottedTimeSeconds);
@@ -278,7 +265,7 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (event) => {
       const tagName = event.target?.tagName?.toLowerCase();
-      const isTyping = tagName === 'input';
+      const isTyping = tagName === 'input' || tagName === 'select';
 
       if (event.code === 'Space' && !isTyping) {
         event.preventDefault();
@@ -307,6 +294,11 @@ export default function App() {
         addFiveSeconds();
       }
 
+      if (!isTyping && event.key.toLowerCase() === 'g') {
+        event.preventDefault();
+        setShowSettings((current) => !current);
+      }
+
       if (event.key === 'Escape' && document.fullscreenElement) {
         setIsFullscreen(false);
       }
@@ -323,12 +315,29 @@ export default function App() {
       return 'overtime';
     }
 
-    if (remainingSeconds <= TEN_SECONDS && timerState === TIMER_STATES.RUNNING) {
+    if (remainingSeconds <= cueSettings.warningSeconds && timerState === TIMER_STATES.RUNNING) {
       return 'warning';
     }
 
     return 'normal';
-  }, [overtimeSeconds, remainingSeconds, timerState]);
+  }, [cueSettings.warningSeconds, overtimeSeconds, remainingSeconds, timerState]);
+
+  if (showSettings && !isFullscreen) {
+    return (
+      <div ref={appRef} className="app app--settings">
+        <SettingsPage
+          soundEnabled={soundEnabled}
+          onToggleSound={() => setSoundEnabled((value) => !value)}
+          cueSettings={cueSettings}
+          onCueSettingChange={updateCueSetting}
+          selectedSounds={selectedSounds}
+          onSoundSelectionChange={updateSoundSelection}
+          onPreviewSound={playNamedSound}
+          onBack={() => setShowSettings(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div ref={appRef} className={`app app--${displayMode} ${isFullscreen ? 'app--fullscreen' : ''}`}>
@@ -355,6 +364,7 @@ export default function App() {
             onStop={stopTimer}
             onAddFiveSeconds={addFiveSeconds}
             onEnterFullscreen={requestFullscreen}
+            onOpenSettings={() => setShowSettings(true)}
             timerState={timerState}
             soundEnabled={soundEnabled}
             onToggleSound={() => setSoundEnabled((value) => !value)}

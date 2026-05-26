@@ -25,6 +25,7 @@ export default function TimerControls({
   onStop,
   onAddFiveSeconds,
   onEnterFullscreen,
+  onOpenSettings,
   timerState,
   soundEnabled,
   onToggleSound,
@@ -101,9 +102,14 @@ export default function TimerControls({
           </button>
         </div>
 
-        <button className="button button--ghost button--fullscreen-toggle" onClick={onEnterFullscreen}>
-          Fullscreen
-        </button>
+        <div className="utility-grid">
+          <button className="button button--ghost button--fullscreen-toggle" onClick={onEnterFullscreen}>
+            Fullscreen
+          </button>
+          <button className="button button--ghost" onClick={onOpenSettings}>
+            Settings
+          </button>
+        </div>
 
         <label className="toggle-row">
           <input type="checkbox" checked={soundEnabled} onChange={onToggleSound} />
@@ -115,6 +121,7 @@ export default function TimerControls({
           <span>R: reset</span>
           <span>S: stop</span>
           <span>F: fullscreen</span>
+          <span>G: settings</span>
           <span>+ / =: add 5 sec</span>
         </div>
       </div>
