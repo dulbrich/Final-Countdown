@@ -14,7 +14,7 @@ const TEN_SECONDS = 10;
 const THIRTY_SECONDS = 30;
 const SIXTY_SECONDS = 60;
 
-function buildChime(frequency = 880, duration = 0.18, volume = 0.03) {
+function buildChime(frequency = 880, duration = 0.18, volume = 0.03, type = 'sine') {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
 
@@ -22,9 +22,10 @@ function buildChime(frequency = 880, duration = 0.18, volume = 0.03) {
   const oscillator = context.createOscillator();
   const gain = context.createGain();
 
-  oscillator.type = 'sine';
+  oscillator.type = type;
   oscillator.frequency.value = frequency;
-  gain.gain.value = volume;
+  gain.gain.setValueAtTime(volume, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(Math.max(volume * 0.001, 0.0001), context.currentTime + duration);
 
   oscillator.connect(gain);
   gain.connect(context.destination);
@@ -69,9 +70,8 @@ export default function App() {
 
       if (type === 'ten') buildChime(880, 0.14, 0.03);
       if (type === 'expired') {
-        buildChime(740, 0.65, 0.12);
-        setTimeout(() => buildChime(680, 0.65, 0.13), 420);
-        setTimeout(() => buildChime(620, 0.7, 0.15), 860);
+        buildChime(1046, 0.95, 0.1, 'triangle');
+        setTimeout(() => buildChime(1318, 1.05, 0.08, 'sine'), 90);
       }
       if (type === 'overtime30') {
         buildChime(660, 0.14, 0.035);
