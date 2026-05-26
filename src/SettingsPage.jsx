@@ -3,6 +3,10 @@ import { SOUND_OPTIONS } from './sounds';
 export default function SettingsPage({
   soundEnabled,
   onToggleSound,
+  volume,
+  onVolumeChange,
+  keepAliveEnabled,
+  onToggleKeepAlive,
   cueSettings,
   onCueSettingChange,
   selectedSounds,
@@ -10,6 +14,7 @@ export default function SettingsPage({
   onPreviewSound,
   onBack,
 }) {
+  const volumePercent = Math.round(volume * 100);
   return (
     <section className="settings-page">
       <div className="settings-card">
@@ -29,6 +34,28 @@ export default function SettingsPage({
             <label className="toggle-row">
               <input type="checkbox" checked={soundEnabled} onChange={onToggleSound} />
               <span>Enable sounds by default</span>
+            </label>
+
+            <label className="volume-row">
+              <span>Volume <span className="volume-row__value">{volumePercent}%</span></span>
+              <input
+                type="range"
+                min="0"
+                max="200"
+                step="5"
+                value={volumePercent}
+                onChange={(event) => onVolumeChange(Number(event.target.value) / 100)}
+              />
+            </label>
+
+            <label className="toggle-row toggle-row--stacked">
+              <span className="toggle-row__main">
+                <input type="checkbox" checked={keepAliveEnabled} onChange={onToggleKeepAlive} />
+                <span>Keep speakers awake</span>
+              </span>
+              <span className="toggle-row__hint">
+                Plays a silent low tone so power-saving speakers don't fade in the first chime.
+              </span>
             </label>
 
             <div className="cue-grid">

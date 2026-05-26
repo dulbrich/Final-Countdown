@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TimerDisplay from './TimerDisplay';
 import TimerControls from './TimerControls';
 import SettingsPage from './SettingsPage';
-import { playNamedSound } from './sounds';
+import { playNamedSound, startKeepAlive, stopKeepAlive } from './sounds';
 
 const TIMER_STATES = {
   IDLE: 'idle',
@@ -21,6 +21,8 @@ export default function App() {
   const [overtimeSeconds, setOvertimeSeconds] = useState(0);
   const [timerState, setTimerState] = useState(TIMER_STATES.IDLE);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [volume, setVolume] = useState(1);
+  const [keepAliveEnabled, setKeepAliveEnabled] = useState(false);
   const [minutesInput, setMinutesInput] = useState('3');
   const [secondsInput, setSecondsInput] = useState('00');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -53,10 +55,24 @@ export default function App() {
     (cueType) => {
       if (!soundEnabled) return;
       const soundId = selectedSounds[cueType];
-      if (soundId) playNamedSound(soundId);
+      if (soundId) playNamedSound(soundId, volume);
     },
-    [selectedSounds, soundEnabled]
+    [selectedSounds, soundEnabled, volume]
   );
+
+  const previewSound = useCallback((soundId) => playNamedSound(soundId, volume), [volume]);
+
+  const toggleKeepAlive = useCallback(async () => {
+    if (keepAliveEnabled) {
+      stopKeepAlive();
+      setKeepAliveEnabled(false);
+      return;
+    }
+    const started = await startKeepAlive();
+    setKeepAliveEnabled(started);
+  }, [keepAliveEnabled]);
+
+  useEffect(() => () => stopKeepAlive(), []);
 
   const clearTicker = useCallback(() => {
     if (intervalRef.current) {
@@ -99,7 +115,7 @@ export default function App() {
       return;
     }
 
-    const overtime = Math.abs(Math.floor(diffMs / 1000));
+    const overtime = Math.max(0, Math.floor(-diffMs / 1000));
     setRemainingSeconds(0);
     setOvertimeSeconds(overtime);
     setTimerState(TIMER_STATES.EXPIRED);
@@ -328,11 +344,15 @@ export default function App() {
         <SettingsPage
           soundEnabled={soundEnabled}
           onToggleSound={() => setSoundEnabled((value) => !value)}
+          volume={volume}
+          onVolumeChange={setVolume}
+          keepAliveEnabled={keepAliveEnabled}
+          onToggleKeepAlive={toggleKeepAlive}
           cueSettings={cueSettings}
           onCueSettingChange={updateCueSetting}
           selectedSounds={selectedSounds}
           onSoundSelectionChange={updateSoundSelection}
-          onPreviewSound={playNamedSound}
+          onPreviewSound={previewSound}
           onBack={() => setShowSettings(false)}
         />
       </div>

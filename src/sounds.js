@@ -21,7 +21,7 @@ export const SOUND_OPTIONS = [
   { id: 'tone-triple', name: 'Triple Chime' },
 ];
 
-function playTone(context, { frequency, duration, volume, type = 'sine', delay = 0 }) {
+function playTone(context, destination, { frequency, duration, volume, type = 'sine', delay = 0 }) {
   const oscillator = context.createOscillator();
   const gain = context.createGain();
   const startAt = context.currentTime + delay;
@@ -35,11 +35,13 @@ function playTone(context, { frequency, duration, volume, type = 'sine', delay =
   gain.gain.exponentialRampToValueAtTime(Math.max(volume * 0.001, 0.0001), endAt);
 
   oscillator.connect(gain);
-  gain.connect(context.destination);
+  gain.connect(destination);
 
   oscillator.start(startAt);
   oscillator.stop(endAt);
 }
+
+const BASE_LOUDNESS = 6;
 
 function patternForSound(id) {
   switch (id) {
@@ -142,28 +144,90 @@ function patternForSound(id) {
   }
 }
 
-export async function playNamedSound(id) {
+let sharedContext = null;
+let keepAliveNodes = null;
+
+async function getSharedContext() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
 
-  const context = new AudioContextClass();
+  if (!sharedContext || sharedContext.state === 'closed') {
+    sharedContext = new AudioContextClass();
+  }
 
-  if (context.state === 'suspended') {
+  if (sharedContext.state === 'suspended') {
     try {
-      await context.resume();
+      await sharedContext.resume();
     } catch {
-      context.close().catch(() => {});
       return null;
     }
   }
 
-  const tones = patternForSound(id);
-  tones.forEach((tone) => playTone(context, tone));
+  return sharedContext;
+}
 
-  const longest = tones.reduce((max, tone) => Math.max(max, tone.delay + tone.duration), 0);
+export async function playNamedSound(id, volume = 1) {
+  const context = await getSharedContext();
+  if (!context) return null;
+
+  const masterGain = context.createGain();
+  masterGain.gain.value = Math.max(0, Math.min(volume, 4)) * BASE_LOUDNESS;
+
+  const limiter = context.createDynamicsCompressor();
+  limiter.threshold.value = -6;
+  limiter.knee.value = 6;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.12;
+
+  masterGain.connect(limiter);
+  limiter.connect(context.destination);
+
+  const tones = patternForSound(id);
+  tones.forEach((tone) => playTone(context, masterGain, tone));
+
+  const longest = tones.reduce((max, tone) => Math.max(max, (tone.delay ?? 0) + tone.duration), 0);
   window.setTimeout(() => {
-    context.close().catch(() => {});
+    try {
+      limiter.disconnect();
+      masterGain.disconnect();
+    } catch {
+      // Nodes may already be detached.
+    }
   }, Math.ceil(longest * 1000) + 150);
 
   return context;
+}
+
+export async function startKeepAlive() {
+  if (keepAliveNodes) return true;
+
+  const context = await getSharedContext();
+  if (!context) return false;
+
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = 'sine';
+  oscillator.frequency.value = 40;
+  gain.gain.value = 0.0008;
+
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start();
+
+  keepAliveNodes = { oscillator, gain };
+  return true;
+}
+
+export function stopKeepAlive() {
+  if (!keepAliveNodes) return;
+  const { oscillator, gain } = keepAliveNodes;
+  try {
+    oscillator.stop();
+    oscillator.disconnect();
+    gain.disconnect();
+  } catch {
+    // Already stopped or disconnected.
+  }
+  keepAliveNodes = null;
 }

@@ -39,7 +39,11 @@ function getStatus(timerState, remainingSeconds, overtimeSeconds) {
 export default function TimerDisplay({ remainingSeconds, overtimeSeconds, timerState, isFullscreen = false }) {
   const expired = timerState === TIMER_STATES.EXPIRED;
   const status = getStatus(timerState, remainingSeconds, overtimeSeconds);
-  const primaryTime = expired ? formatOvertime(overtimeSeconds) : formatClock(remainingSeconds);
+  const primaryTime = expired
+    ? overtimeSeconds > 0
+      ? formatOvertime(overtimeSeconds)
+      : formatClock(0)
+    : formatClock(remainingSeconds);
 
   return (
     <section className={`display ${expired ? 'display--expired' : ''} ${isFullscreen ? 'display--fullscreen' : ''}`}>
