@@ -140,11 +140,21 @@ function patternForSound(id) {
   }
 }
 
-export function playNamedSound(id) {
+export async function playNamedSound(id) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
 
   const context = new AudioContextClass();
+
+  if (context.state === 'suspended') {
+    try {
+      await context.resume();
+    } catch {
+      context.close().catch(() => {});
+      return null;
+    }
+  }
+
   const tones = patternForSound(id);
   tones.forEach((tone) => playTone(context, tone));
 
