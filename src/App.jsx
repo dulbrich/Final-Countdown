@@ -44,7 +44,7 @@ export default function App() {
   const [remainingSeconds, setRemainingSeconds] = useState(180);
   const [overtimeSeconds, setOvertimeSeconds] = useState(0);
   const [timerState, setTimerState] = useState(TIMER_STATES.IDLE);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [minutesInput, setMinutesInput] = useState('3');
   const [secondsInput, setSecondsInput] = useState('00');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -69,8 +69,8 @@ export default function App() {
 
       if (type === 'ten') buildChime(880, 0.14, 0.03);
       if (type === 'expired') {
-        buildChime(740, 0.22, 0.065);
-        setTimeout(() => buildChime(620, 0.22, 0.075), 170);
+        buildChime(740, 0.24, 0.13);
+        setTimeout(() => buildChime(620, 0.24, 0.15), 170);
       }
       if (type === 'overtime30') {
         buildChime(660, 0.14, 0.035);
