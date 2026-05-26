@@ -32,9 +32,7 @@ export default function TimerControls({
     <aside className="controls">
       <div className="panel">
         <h1>Final Countdown</h1>
-        <p className="panel__intro">
-          Set the speaker time, run the countdown, and keep the public display clean and readable.
-        </p>
+        <p className="panel__intro">Set the speaker time and run the countdown.</p>
 
         <div className="time-entry">
           <label>
