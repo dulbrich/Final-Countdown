@@ -68,7 +68,10 @@ export default function App() {
       if (!soundEnabled) return;
 
       if (type === 'ten') buildChime(880, 0.14, 0.03);
-      if (type === 'expired') buildChime(660, 0.28, 0.04);
+      if (type === 'expired') {
+        buildChime(740, 0.22, 0.065);
+        setTimeout(() => buildChime(620, 0.22, 0.075), 170);
+      }
       if (type === 'overtime30') {
         buildChime(660, 0.14, 0.035);
         setTimeout(() => buildChime(880, 0.14, 0.03), 180);
