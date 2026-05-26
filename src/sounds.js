@@ -25,11 +25,13 @@ function playTone(context, { frequency, duration, volume, type = 'sine', delay =
   const oscillator = context.createOscillator();
   const gain = context.createGain();
   const startAt = context.currentTime + delay;
+  const attackEnd = startAt + 0.02;
   const endAt = startAt + duration;
 
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(frequency, startAt);
-  gain.gain.setValueAtTime(Math.max(volume, 0.0001), startAt);
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.001), attackEnd);
   gain.gain.exponentialRampToValueAtTime(Math.max(volume * 0.001, 0.0001), endAt);
 
   oscillator.connect(gain);
