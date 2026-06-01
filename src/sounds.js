@@ -146,6 +146,7 @@ function patternForSound(id) {
 
 let sharedContext = null;
 let keepAliveNodes = null;
+let buzzerNodes = null;
 
 async function getSharedContext() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -217,6 +218,74 @@ export async function startKeepAlive() {
 
   keepAliveNodes = { oscillator, gain };
   return true;
+}
+
+export async function startBuzzer(volume = 1) {
+  if (buzzerNodes) return true;
+
+  const context = await getSharedContext();
+  if (!context) return false;
+
+  const masterGain = context.createGain();
+  const target = Math.max(0, Math.min(volume, 4)) * BASE_LOUDNESS * 0.05;
+  const now = context.currentTime;
+  masterGain.gain.setValueAtTime(0.0001, now);
+  masterGain.gain.exponentialRampToValueAtTime(Math.max(target, 0.0001), now + 0.02);
+
+  const limiter = context.createDynamicsCompressor();
+  limiter.threshold.value = -6;
+  limiter.knee.value = 6;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.12;
+
+  const osc1 = context.createOscillator();
+  osc1.type = 'square';
+  osc1.frequency.value = 110;
+
+  const osc2 = context.createOscillator();
+  osc2.type = 'sawtooth';
+  osc2.frequency.value = 113;
+
+  osc1.connect(masterGain);
+  osc2.connect(masterGain);
+  masterGain.connect(limiter);
+  limiter.connect(context.destination);
+
+  osc1.start();
+  osc2.start();
+
+  buzzerNodes = { osc1, osc2, masterGain, limiter, context };
+  return true;
+}
+
+export function stopBuzzer() {
+  if (!buzzerNodes) return;
+  const { osc1, osc2, masterGain, limiter, context } = buzzerNodes;
+  buzzerNodes = null;
+
+  const fadeMs = 40;
+  try {
+    const now = context.currentTime;
+    masterGain.gain.cancelScheduledValues(now);
+    masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + fadeMs / 1000);
+  } catch {
+    // Context may already be closed.
+  }
+
+  window.setTimeout(() => {
+    try {
+      osc1.stop();
+      osc2.stop();
+      osc1.disconnect();
+      osc2.disconnect();
+      masterGain.disconnect();
+      limiter.disconnect();
+    } catch {
+      // Nodes may already be detached.
+    }
+  }, fadeMs + 20);
 }
 
 export function stopKeepAlive() {

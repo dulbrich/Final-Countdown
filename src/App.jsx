@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TimerDisplay from './TimerDisplay';
 import TimerControls from './TimerControls';
 import SettingsPage from './SettingsPage';
-import { playNamedSound, startKeepAlive, stopKeepAlive } from './sounds';
+import { playNamedSound, startBuzzer, startKeepAlive, stopBuzzer, stopKeepAlive } from './sounds';
 
 const TIMER_STATES = {
   IDLE: 'idle',
@@ -43,6 +43,7 @@ export default function App() {
   const warningPlayedRef = useRef(false);
   const expiredRef = useRef(false);
   const overtimeCuePlayedRef = useRef(false);
+  const buzzerActiveRef = useRef(false);
 
   const syncInputs = useCallback((totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60);
@@ -73,6 +74,8 @@ export default function App() {
   }, [keepAliveEnabled]);
 
   useEffect(() => () => stopKeepAlive(), []);
+
+  useEffect(() => () => stopBuzzer(), []);
 
   const clearTicker = useCallback(() => {
     if (intervalRef.current) {
@@ -320,14 +323,43 @@ export default function App() {
         playCue('expired');
       }
 
+      if (!isTyping && event.key.toLowerCase() === 'b') {
+        event.preventDefault();
+        if (event.repeat) return;
+        if (!soundEnabled) return;
+        if (buzzerActiveRef.current) return;
+        buzzerActiveRef.current = true;
+        startBuzzer(volume);
+      }
+
       if (event.key === 'Escape' && document.fullscreenElement) {
         setIsFullscreen(false);
       }
     };
 
+    const handleKeyUp = (event) => {
+      if (event.key.toLowerCase() === 'b' && buzzerActiveRef.current) {
+        buzzerActiveRef.current = false;
+        stopBuzzer();
+      }
+    };
+
+    const handleBlur = () => {
+      if (buzzerActiveRef.current) {
+        buzzerActiveRef.current = false;
+        stopBuzzer();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addFiveSeconds, pauseTimer, playCue, requestFullscreen, resetTimer, resumeTimer, startTimer, stopTimer, timerState]);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [addFiveSeconds, pauseTimer, playCue, requestFullscreen, resetTimer, resumeTimer, soundEnabled, startTimer, stopTimer, timerState, volume]);
 
   const displayMode = useMemo(() => {
     if (timerState === TIMER_STATES.EXPIRED) {
