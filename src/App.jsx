@@ -315,6 +315,11 @@ export default function App() {
         setShowSettings((current) => !current);
       }
 
+      if (!isTyping && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        playCue('expired');
+      }
+
       if (event.key === 'Escape' && document.fullscreenElement) {
         setIsFullscreen(false);
       }
@@ -322,7 +327,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addFiveSeconds, pauseTimer, requestFullscreen, resetTimer, resumeTimer, startTimer, stopTimer, timerState]);
+  }, [addFiveSeconds, pauseTimer, playCue, requestFullscreen, resetTimer, resumeTimer, startTimer, stopTimer, timerState]);
 
   const displayMode = useMemo(() => {
     if (timerState === TIMER_STATES.EXPIRED) {

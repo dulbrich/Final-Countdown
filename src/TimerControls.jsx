@@ -122,6 +122,7 @@ export default function TimerControls({
           <span>S: stop</span>
           <span>F: fullscreen</span>
           <span>G: settings</span>
+          <span>D: play time-up sound</span>
           <span>+ / =: add 5 sec</span>
         </div>
       </div>
